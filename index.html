@@ -81,7 +81,7 @@ svg.i { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-widt
 .zoom button { border: 0; background: none; padding: 6px 10px; display: grid; place-items: center; }
 .zoom button:hover { background: var(--sunk); }
 .zoom span { font: 500 12px/1 var(--f-mono); color: var(--muted); min-width: 44px; text-align: center; }
-.grid { --thumb: 170px; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--thumb), 100%), 1fr)); gap: 26px 22px; align-items: end; }
+.grid { --thumb: 260px; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--thumb), 100%), 1fr)); gap: 26px 22px; align-items: end; }
 .pg { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: zoom-in; }
 .sheet { position: relative; width: 100%; background: #FFFFFF; box-shadow: var(--page-shadow); border-radius: 2px; overflow: hidden; container-type: inline-size; }
 .sheet canvas { display: block; width: 100%; height: 100%; }
@@ -182,7 +182,7 @@ svg.i { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-widt
   <div class="logo"><span class="mark" aria-hidden="true"><span><i style="height:6px"></i><i style="height:12px"></i><i style="height:16px"></i><i style="height:9px"></i></span></span><span class="word">SayPDF</span></div>
   <div class="doc"><span id="fname">Loading…</span><span class="pill" id="count"></span><span class="pill sample" id="sampleTag" hidden>Sample</span></div>
   <div class="actions">
-    <button class="btn" id="open" type="button" title="Open a PDF"><svg class="i" viewBox="0 0 24 24"><path d="M12 15V4m0 0L7.5 8.5M12 4l4.5 4.5M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3"/></svg><span>Open PDF</span></button>
+    <button class="btn" id="open" type="button" title="Upload a PDF"><svg class="i" viewBox="0 0 24 24"><path d="M12 15V4m0 0L7.5 8.5M12 4l4.5 4.5M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3"/></svg><span>Upload PDF</span></button>
     <button class="btn" id="undo" type="button" disabled title="Undo"><svg class="i" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 010 11H11"/></svg><span>Undo</span></button>
     <button class="btn primary" id="save" type="button" title="Download the PDF"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3"/></svg><span>Download</span></button>
   </div>
@@ -191,7 +191,7 @@ svg.i { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-widt
 <div class="app">
   <main class="canvas">
     <div class="tools">
-      <span class="note" id="note">Sample file. Open your own PDF to edit it.</span>
+      <span class="note" id="note">Sample file. Upload your own PDF to edit it.</span>
       <div class="zoom" aria-label="Zoom">
         <button type="button" id="zoomOut" title="Zoom out"><svg class="i" viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
         <span id="zoomLabel">100%</span>
@@ -289,7 +289,7 @@ async function renderThumbs(d) {
     try {
       const page = await pdf.getPage(i + 1);
       const v1 = page.getViewport({ scale: 1 });
-      const vp = page.getViewport({ scale: Math.min(3, 360 / v1.width) });
+      const vp = page.getViewport({ scale: Math.min(4, 720 / v1.width) });
       const c = document.createElement("canvas");
       c.width = Math.round(vp.width); c.height = Math.round(vp.height);
       await page.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise;
@@ -752,7 +752,7 @@ function run(text) {
 
 /* ---------- drawing the desk ---------- */
 const calm = matchMedia("(prefers-reduced-motion: reduce)");
-const ZOOMS = [110, 140, 170, 230, 310, 420];
+const ZOOMS = [150, 200, 260, 330, 420, 540];
 let lastRot = new Map(), zoom = 2, viewIdx = -1;
 
 function render(changed = new Set()) {
@@ -760,7 +760,7 @@ function render(changed = new Set()) {
   $("#fname").textContent = st.name + ".pdf";
   $("#count").textContent = `${N} ${plural(N)}`;
   $("#sampleTag").hidden = !st.isSample;
-  $("#note").textContent = st.isSample ? "Sample file. Open your own PDF to edit it." : "Click a page to see it up close.";
+  $("#note").textContent = st.isSample ? "Sample file. Upload your own PDF to edit it." : "Click a page to see it up close.";
   $("#undo").disabled = !hist.length;
   $("#save").disabled = !N;
   $("#empty").hidden = N > 0;
@@ -815,7 +815,7 @@ function card(p, k, N, isNew) {
   return f;
 }
 
-function paint(f, base, W = 320) {
+function paint(f, base, W = 560) {
   const p = f._p, sh = f.querySelector(".sheet"), c = f.querySelector("canvas");
   const t = p.d >= 0 ? thumbs.get(p.d + ":" + p.i) : null;
   const [vw, vh] = dims(p);
@@ -1145,10 +1145,10 @@ async function boot() {
     const bytes = await makeSample();
     st.pages = await addDoc(bytes, "Sample rental papers.pdf");
     render();
-    reply([{ ok: true, ic: "→", msg: "This sample has a sideways page, a blank page and a duplicate. Fix them by voice, or open your own PDF." }]);
+    reply([{ ok: true, ic: "→", msg: "This sample has a sideways page, a blank page and a duplicate. Fix them by voice, or upload your own PDF." }]);
   } catch (e) {
     console.error(e);
-    reply([{ ok: false, msg: "Couldn't create the sample. Open your own PDF to start." }]);
+    reply([{ ok: false, msg: "Couldn't create the sample. Upload your own PDF to start." }]);
   }
 }
 boot();
