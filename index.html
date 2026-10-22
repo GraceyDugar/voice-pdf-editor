@@ -458,7 +458,7 @@ function doReplace(oldT, newT, ctx, N, mark) {
   if (!oldT || !newT || /^(?:the\s+)?pages?\s+\d/i.test(oldT)) return null;
   if (!ps.length) ps = st.pages.slice();
   if (ps.some(p => p.d >= 0 && !thumbs.has(p.d + ":" + p.i))) fail("I'm still reading the pages. Try again in a second.");
-  const low = oldT.toLowerCase(), where = [];
+  const pat = new RegExp(oldT.replace(/(\d),(?=\d)/g, "$1").replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\d(?=\d)/g, "$&,?").replace(/\s+/g, "\\s*"), "gi"), where = [];
   let hits = 0;
   for (const p of ps) {
     if (p.d < 0) continue;
@@ -466,11 +466,12 @@ function doReplace(oldT, newT, ctx, N, mark) {
     const t = thumbs.get(p.d + ":" + p.i);
     for (const it of t.items || []) {
       if (!it.flat) continue;
-      const L = it.s.toLowerCase();
-      for (let i = L.indexOf(low); i >= 0; i = L.indexOf(low, i + low.length)) {
-        const [off, w] = spanOf(it, i, oldT.length), x = it.x + off;
+      for (const mm of it.s.matchAll(pat)) {
+        if (!mm[0]) continue;
+        const i = mm.index, len = mm[0].length;
+        const [off, w] = spanOf(it, i, len), x = it.x + off;
         p.stamps = p.stamps.filter(q => !(q.kind === "edit" && Math.abs(q.x - x) < 0.5 && Math.abs(q.y - it.y) < 0.5));
-        p.stamps.push({ kind: "edit", text: matchCase(it.s.substr(i, oldT.length), newT), x, y: it.y, w, size: it.size, serif: it.serif, color: inkColor(t, x, it.y, w, it.size) });
+        p.stamps.push({ kind: "edit", text: matchCase(mm[0], newT), x, y: it.y, w, size: it.size, serif: it.serif, color: inkColor(t, x, it.y, w, it.size) });
         n++;
       }
     }
@@ -571,6 +572,12 @@ function exec(o, ctx, changed) {
     return { ok: true, ic: "↥", msg: "Choose a PDF to open. If no window opened, drop the file onto this page." };
   }
 
+  const ft = o.match(/^\s*(?:replace|change|edit|correct|fix|update|modify)\s+.+?\s+from\s+(.+?)\s+(?:to|into|with)\s+(.+?)\s*$/i);
+  if (ft) {
+    const r = doReplace(ft[1], ft[2], ctx, N, mark);
+    if (r) return r;
+    fail(`I couldn't find “${ft[1]}” in the text of this PDF. Scanned PDFs are images, so their text can't be edited.`);
+  }
   const rp = o.match(/^\s*(?:replace|change|edit|correct|fix|update|modify)\s+(?:the\s+)?(?:text|word|words|name|line|spelling of)?\s*(.+?)\s+(?:with|to|into|by)\s+(.+?)\s*$/i);
   if (rp && !/^(?:the\s+)?pages?\s+\d/i.test(rp[1])) {
     const r = doReplace(rp[1], rp[2], ctx, N, mark);
@@ -599,7 +606,7 @@ function exec(o, ctx, changed) {
   }
 
   if (has(/\bsign\b|\bsignature\b/)) {
-    const m = o.match(/\b(?:as|with(?: the name)?|named|name|by)\s+([A-Za-zÀ-ɏ][A-Za-zÀ-ɏ .'-]{0,48}?)(?=\s+(?:on|at|in|to)\b|[.,!]|$)/i);
+    const m = o.match(/\b(?:as|with(?: the name)?|named|name|by|signature(?: of)?)\s*[:\-]?\s+(?!(?:to|on|at|in|the|my|page|last|first|name)\b)([A-Za-zÀ-ɏ][A-Za-zÀ-ɏ .'-]{0,48}?)(?=\s+(?:on|at|in|to)\b|[.,!]|$)/i);
     if (!m) fail("Tell me the name to sign with. Say “sign the last page as Priya Shah”.");
     const rest = norm(o.replace(m[0], " "), N);
     let ps = pagesIn(rest, ctx);
