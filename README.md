@@ -4,7 +4,7 @@
 
 **Live demo:** https://graceydugar.github.io/voice-pdf-editor/
 
-![SayPDF screenshot](screenshot.png)
+![SayPDF screenshot](saypdff.png)
 
 ## The problem
 Fixing a PDF (removing a blank page, turning a sideways scan, reordering pages) usually means uploading private documents like ID cards, bank statements or contracts to ad-filled websites. SayPDF does it in your browser, by voice, and your file never leaves your device.
