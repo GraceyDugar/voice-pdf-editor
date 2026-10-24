@@ -19,9 +19,10 @@ Fixing a PDF (removing a blank page, turning a sideways scan, reordering pages) 
 | Add | "Duplicate page 2", "Insert a blank page after page 1", "Merge another PDF" |
 | Write on pages | "Write Approved on page 1", "Stamp PAID in red", "Watermark CONFIDENTIAL", "Sign the last page as Priya Shah", "Add page numbers" |
 | View | "Zoom in", "Show page 2", "Next page", "Close" |
+| Hinglish | "Page 3 hatao", "Khali pages hatao", "Aakhri page ko pehle lao", "45,000 ko 60,000 kar do" |
 | Finish | "Undo", "Start over", "Save as Rent agreement final" |
 
-Several commands can be chained in one sentence. Page numbers always refer to what you see on screen when you start speaking.
+Several commands can be chained in one sentence, in English or Hinglish (romanised or Devanagari). Every spoken command flashes as a large caption so you can see exactly what was heard. Page numbers always refer to what you see on screen when you start speaking.
 
 ## How it works with Wispr Flow
 Wispr Flow types your speech into whatever text box is focused. SayPDF detects when dictated text lands in its command bar and runs it right away, so the whole flow is hands-free: no clicking, no Enter key.

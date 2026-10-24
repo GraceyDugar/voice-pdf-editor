@@ -81,7 +81,7 @@ svg.i { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-widt
 .zoom button { border: 0; background: none; padding: 6px 10px; display: grid; place-items: center; }
 .zoom button:hover { background: var(--sunk); }
 .zoom span { font: 500 12px/1 var(--f-mono); color: var(--muted); min-width: 44px; text-align: center; }
-.grid { --thumb: 260px; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--thumb), 100%), 1fr)); gap: 26px 22px; align-items: end; }
+.grid { --thumb: 260px; display: grid; grid-template-columns: repeat(auto-fill, min(var(--thumb), 100%)); justify-content: center; gap: 26px 22px; align-items: end; }
 .pg { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: zoom-in; }
 .sheet { position: relative; width: 100%; background: #FFFFFF; box-shadow: var(--page-shadow); border-radius: 2px; overflow: hidden; container-type: inline-size; }
 .sheet canvas { display: block; width: 100%; height: 100%; }
@@ -159,6 +159,15 @@ svg.i { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-widt
 .toggles { display: flex; flex-direction: column; gap: 10px; }
 .toggles label { display: flex; gap: 10px; align-items: center; cursor: pointer; }
 .toggles input { accent-color: var(--accent); width: 16px; height: 16px; }
+.caption { position: fixed; z-index: 25; left: calc((100% - 380px) / 2); top: 96px; transform: translateX(-50%); width: min(720px, calc(100% - 420px)); background: rgba(17, 24, 39, .92); color: #FFFFFF; border-radius: 18px; padding: 18px 24px; box-shadow: var(--pop-shadow); text-align: center; pointer-events: none; }
+.caption .said { font-size: 26px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+.caption .said::before { content: "“"; color: var(--accent); } .caption .said::after { content: "”"; color: var(--accent); }
+.caption .did { margin-top: 8px; font-size: 15px; color: #C9CED8; overflow-wrap: anywhere; }
+.caption .did.err { color: #FDBA74; }
+.caption .tag { display: inline-flex; align-items: center; gap: 6px; font: 500 11px/1 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+.caption.show { animation: capIn .25s ease-out; }
+@keyframes capIn { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translateX(-50%); } }
+@media (max-width: 900px) { .caption { left: 50%; width: calc(100% - 32px); top: auto; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); } .caption .said { font-size: 20px; } }
 #drop { position: fixed; inset: 0; z-index: 40; background: var(--scrim); display: grid; place-items: center; text-align: center; padding: 24px; font-size: 26px; font-weight: 600; color: #FFFFFF; outline: 3px dashed #FFFFFF; outline-offset: -18px; }
 
 @media (prefers-reduced-motion: reduce) { .pg.changed .sheet, #form .wave i { animation: none !important; } }
@@ -226,6 +235,8 @@ svg.i { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-widt
     </div>
   </aside>
 </div>
+
+<div class="caption" id="caption" hidden aria-hidden="true"><div class="tag">● You said</div><div class="said" id="capSaid"></div><div class="did" id="capDid"></div></div>
 
 <div class="viewer" id="viewer" hidden>
   <div class="vbar">
@@ -739,6 +750,91 @@ function dims(p) {
   return p.rot % 180 ? [h, w] : [w, h];
 }
 
+/* ---------- Hinglish ---------- */
+const DEVA = [
+  ["उसके बाद", " uske baad "], ["के बाद", " ke baad "], ["से पहले", " se pehle "], ["की जगह", " ki jagah "], ["के नाम से", " ke naam se "], ["नाम से", " naam se "],
+  ["अंत में", " end mein "], ["शुरू में", " shuru mein "], ["कर दो", " kar do "], ["हटा दो", " hata do "], ["घुमा दो", " ghuma do "], ["बदल दो", " badal do "], ["मिटा दो", " mita do "],
+  ["हटाओ", " hatao "], ["निकालो", " nikalo "], ["मिटाओ", " mitao "], ["घुमाओ", " ghumao "], ["उल्टा", " ulta "], ["उलटा", " ulta "], ["सीधा", " seedha "],
+  ["करो", " karo "], ["को", " ko "], ["पेज", " page "], ["पन्ने", " panne "], ["पन्ना", " panna "], ["खाली", " khali "], ["आखिरी", " aakhri "], ["आख़िरी", " aakhri "],
+  ["पहला", " pehla "], ["पहले", " pehle "], ["दूसरा", " doosra "], ["तीसरा", " teesra "], ["लाओ", " lao "], ["डालो", " daalo "], ["रखो", " rakho "], ["बदलो", " badlo "],
+  ["लिखो", " likho "], ["दिखाओ", " dikhao "], ["जोड़ो", " jodo "], ["जोड़ो", " jodo "], ["लगाओ", " lagao "], ["सारे", " saare "], ["सभी", " sabhi "], ["सब", " sab "], ["वापस", " wapas "],
+  ["बाएं", " left "], ["बाएँ", " left "], ["बायें", " left "], ["दाएं", " right "], ["दाएँ", " right "], ["दायें", " right "], ["बड़ा", " bada "], ["बड़ा", " bada "], ["छोटा", " chhota "],
+  ["बंद", " band "], ["डाउनलोड", " download "], ["नंबर", " number "], ["ज़ूम", " zoom "], ["जूम", " zoom "], ["साइन", " sign "], ["वाला", " wala "], ["वाले", " wale "],
+  ["और", " aur "], ["फिर", " phir "], ["में", " mein "], ["पर", " par "], ["पे", " pe "], ["सिर्फ", " sirf "], ["सिर्फ़", " sirf "],
+  ["एक", " 1 "], ["दो", " do "], ["तीन", " 3 "], ["चार", " 4 "], ["पांच", " 5 "], ["पाँच", " 5 "], ["छह", " 6 "], ["छः", " 6 "], ["सात", " 7 "], ["आठ", " 8 "], ["नौ", " 9 "], ["दस", " 10 "],
+];
+const HMARK = /\b(?:ko|karo|kar ?do|hatao|hata|nikalo|nikaal|nikal|mitao|mita|ghumao|ghuma|ulta|seedha|sidha|lao|daalo|dalo|rakho|badlo|badal|likho|dikhao|dikha|jodo|lagao|banao|khali|khaali|aakhri|aakhiri|akhri|pehla|pehle|doosra|dusra|teesra|saare|sabhi|wapas|baad|jagah|naam|wala|wale|waala|panna|panne|bada|chhota|chota|band|kholo|sirf)\b/i;
+const HNUM = { ek: 1, teen: 3, chaar: 4, char: 4, paanch: 5, panch: 5, chhe: 6, chheh: 6, saat: 7, aath: 8, nau: 9, das: 10 };
+
+function hTokens(s) {
+  s = " " + s.toLowerCase() + " ";
+  const R = (re, to) => { s = s.replace(re, to); };
+  R(/\b(page|panna|pages|panne)\s+do\b/g, "$1 2");
+  R(new RegExp(`\\b(${Object.keys(HNUM).join("|")})\\b`, "g"), m => HNUM[m]);
+  R(/\b(\d+)\s+(?:number|no\.?|nambar)\s+(?:wala\s+|wale\s+|waala\s+)?(?:page|panna)\b/g, "page $1");
+  R(/\b(?:aakhri|aakhiri|akhri|antim)\b/g, "last"); R(/\blast\s+(?:wala|wale|waala)\b/g, "last");
+  R(/\b(?:pehla|pahla)\b/g, "first"); R(/\b(?:doosra|dusra)\b/g, "second"); R(/\b(?:teesra|tisra)\b/g, "third"); R(/\bchautha\b/g, "fourth");
+  R(/\b(?:khali|khaali)\b/g, "blank"); R(/\b(?:saare|sare|sabhi|saari|sab)\b/g, "all");
+  R(/\bpanne\b/g, "pages"); R(/\bpanna\b/g, "page");
+  R(/\b(?:baaye|baayein|bayen|baen|baayi|baayen)\b/g, "left"); R(/\b(?:daaye|daayein|dayen|daen|daayi|daayen)\b/g, "right");
+  let verb = "";
+  const V = (re, v, extra = "") => { if (!verb && re.test(s)) { verb = v; s = s.replace(re, " " + extra + " "); } };
+  V(/\bpage ?numbers?\s+(?:daalo|dalo|lagao|laga do|jodo|jod do|add karo|add kar do|daal do)\b/, "add page numbers");
+  V(/\bblank\s+(pages?)\s+(?:jodo|jod do|daalo|dalo|daal do|lagao|add karo|add kar do)\b/, "insert a blank page");
+  V(/\b(?:sabse\s+)?(?:pehle|aage|shuru mein|start mein|shuruaat mein)\s+(?:lao|le aao|daalo|dalo|rakho|kar do|karo|bhejo)\b/, "move", "to the front");
+  V(/\b(?:aakhir mein|end mein|peeche|last mein|ant mein)\s+(?:lao|le aao|daalo|dalo|rakho|kar do|karo|bhejo)\b/, "move", "to the end");
+  V(/\b(?:hatao|hata do|hata dena|hatana|nikalo|nikaal do|nikal do|nikaalo|mitao|mita do|uda do|delete karo|delete kar do|hata)\b/, "delete");
+  V(/\bulta\s+(?:karo|kar do|kardo)\b|\bulta\b/, "rotate", "upside down");
+  V(/\b(?:ghumao|ghuma do|ghumaa do|ghumaao|rotate karo|rotate kar do|seedha karo|sidha karo|seedha kar do|ghuma)\b/, "rotate");
+  V(/\b(?:bada karo|bada kar do|bada dikhao|zoom karo|zoom in karo|zoom kar do)\b/, "zoom in");
+  V(/\b(?:chhota karo|chota karo|chhota kar do|chota kar do|zoom out karo)\b/, "zoom out");
+  V(/\b(?:band karo|band kar do)\b/, "close");
+  V(/\b(?:wapas karo|wapas lao|wapas kar do|pehle jaisa karo|pehle jaisa kar do|undo karo|undo kar do)\b/, "undo");
+  V(/\b(?:download karo|download kar do|save karo|save kar do)\b/, "download");
+  V(/\b(?:copy banao|copy karo|copy kar do|duplicate karo|duplicate kar do)\b/, "duplicate");
+  V(/\b(?:dikhao|dikha do|kholo|khol do)\b/, "show");
+  V(/\b(?:lao|le aao|daalo|dalo|rakho|bhejo|shift karo|move karo|move kar do)\b/, "move");
+  const sirf = /\bsirf\b/.test(s);
+  R(/\b(?:sirf|ko|ka|ke|ki|wala|wale|waala|karo|kar do|kardo|please|na|zara|jara|bhi|pe|par|mein|me|do)\b/g, " ");
+  R(/\bke baad\b/g, " after ");
+  s = s.replace(/\s+/g, " ").trim();
+  if (sirf && verb === "move") verb = "keep only";
+  if (!verb) return s;
+  if (verb === "show" && !/\bpage\b/.test(s)) verb = "zoom in";
+  return (verb + " " + s).trim();
+}
+
+function fromHinglish(t) {
+  let s = " " + t + " ";
+  for (const [d, r] of DEVA) s = s.split(d).join(r);
+  s = s.replace(/[०-९]/g, c => "०१२३४५६७८९".indexOf(c)).replace(/\s+/g, " ").trim();
+  if (!HMARK.test(s)) return s;
+  let m;
+  if ((m = s.match(/^(.*?)\s+(?:ki|ke)\s+jagah\s+(.+?)\s+(?:likho|likh do|daalo|dalo|kar do|kardo|karo|lagao)\s*[.!]?$/i))) return `change ${m[1]} to ${m[2]}`;
+  if ((m = s.match(/^(.*?)\s+ko\s+(.+?)\s+(?:se\s+|mein\s+|me\s+)?(?:badlo|badal do|badal dena|kar do|kardo|karo|change karo|change kar do)\s*[.!]?$/i)) && !/\b(?:page|panna|panne|pages)\b/i.test(m[1]) && !/^(?:ulta|seedha|sidha|delete|bada|chhota|chota|band|wapas|undo|download|save|rotate|zoom)\b/i.test(m[2]))
+    return `change ${m[1]} to ${m[2]}`;
+  if ((m = s.match(/((?:[A-Z][\w.'-]*\s?){1,4})\s+(?:ke|ki)\s+naam\s+se/))) {
+    const rest = s.replace(m[0], " ").replace(/\bsign\s*(?:karo|kar do|kardo)?/i, " ");
+    return `sign ${hTokens(rest)} as ${m[1].trim()}`.replace(/\s+/g, " ");
+  }
+  if ((m = s.match(/^(.*?)\s+ko\s+(.*?)\s+(ke baad|se pehle)\b/i)))
+    return `move ${hTokens(m[1])} ${m[3].toLowerCase() === "ke baad" ? "after" : "before"} ${hTokens(m[2])}`.replace(/\s+/g, " ");
+  return hTokens(s);
+}
+
+function translate(text) {
+  const out = [];
+  for (const part of text.split(/\s*(?:[.;!?]\s+|\n|\s+(?:phir|fir|uske baad|फिर|उसके बाद)\s+)\s*/i)) {
+    let acc = "";
+    for (const bit of part.split(/\s+(?:aur|और)\s+/i)) {
+      acc = acc ? acc + " aur " + bit : bit;
+      if (/(?:hatao|hata do|karo|kar do|kardo|lao|rakho|ghumao|ghuma do|daalo|dalo|likho|dikhao|jodo|lagao|badlo|badal do|nikalo|mitao|kholo|हटाओ|करो|कर दो|लाओ|रखो|घुमाओ|डालो|लिखो|दिखाओ|जोड़ो|लगाओ|बदलो)\s*[.!]?$/i.test(acc)) { out.push(acc); acc = ""; }
+    }
+    if (acc.trim()) out.push(acc);
+  }
+  return out.filter(x => x && x.trim()).map(fromHinglish).join(". ");
+}
+
 function run(text) {
   text = text.trim();
   if (!text) return;
@@ -746,14 +842,17 @@ function run(text) {
   const before = snap();
   ctxRef = st.pages.slice();
   const ctx = { ref: ctxRef }, changed = new Set(), res = [];
-  for (const c of text.split(SPLIT).filter(x => x && x.trim())) {
+  const plain = translate(text);
+  if (plain.toLowerCase().replace(/[^a-z0-9]/g, "") !== text.toLowerCase().replace(/[^a-z0-9]/g, "")) res.push({ ok: true, ic: "अ", msg: `Understood as “${plain}”.` });
+  for (const c of plain.split(SPLIT).filter(x => x && x.trim())) {
     try { const r = exec(c, ctx, changed); if (r) res.push(r); }
     catch (e) { res.push({ ok: false, msg: e.user ? e.message : "Something went wrong with that one. Try saying it another way." }); if (!e.user) console.error(e); }
   }
-  if (!res.length) return;
+  if (!res.some(r => r.ic !== "अ")) return;
   if (res.some(r => r.mut)) { hist.push(before); if (hist.length > 60) hist.shift(); fut = []; }
   render(changed);
   reply(res, text);
+  caption(text, res);
   res.forEach(r => r.then && r.then());
 }
 
@@ -897,6 +996,17 @@ function viewCmd(s, ctx) {
 }
 
 /* ---------- replies ---------- */
+function caption(said, res) {
+  const c = $("#caption");
+  $("#capSaid").textContent = said;
+  const real = res.filter(r => r.ic !== "अ");
+  const d = $("#capDid");
+  d.textContent = real.map(r => r.msg).join("  ·  ");
+  d.className = "did" + (real.every(r => r.ok) ? "" : " err");
+  c.hidden = false; c.classList.remove("show"); void c.offsetWidth; c.classList.add("show");
+  clearTimeout(caption.t); caption.t = setTimeout(() => { c.hidden = true; }, 3200);
+}
+
 function reply(res, said) {
   const log = $("#log"), frag = document.createDocumentFragment();
   if (said) frag.append(el("li", "you", said));
@@ -1043,10 +1153,11 @@ const SAYS = [
   ["Reorder", ["Move the last page to the front", "Move page 5 after page 1", "Swap pages 1 and 2", "Reverse the order"]],
   ["Add", ["Duplicate page 2", "Insert a blank page after page 1", "Merge another PDF"]],
   ["Write on pages", ["Write Approved on page 1", "Stamp PAID in red on the last page", "Watermark CONFIDENTIAL", "Sign the last page as Priya Shah", "Add today's date at the top of page 1", "Add page numbers"]],
+  ["Hinglish", ["Page 3 hatao", "Khali pages hatao", "Page 4 ko left ghumao", "Aakhri page ko pehle lao", "45,000 ko 60,000 kar do", "Page number daalo"]],
   ["View", ["Zoom in", "Zoom out", "Show page 2", "Next page", "Close"]],
   ["Finish", ["Undo", "Start over", "Save as Rent agreement final"]],
 ];
-const CHIPS_SAMPLE = ["Rotate page 4 left", "Remove blank pages", "Change Rental Agreement to Lease Agreement", "Zoom in", "Add page numbers", "Download"];
+const CHIPS_SAMPLE = ["Rotate page 4 left", "Khali pages hatao", "Change Rental Agreement to Lease Agreement", "Zoom in", "Add page numbers", "Download"];
 const CHIPS_OWN = ["Remove blank pages", "Add page numbers", "Zoom in", "Undo", "Download"];
 
 function setChips() {
